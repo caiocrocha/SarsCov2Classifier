@@ -4,6 +4,7 @@
 
 import pandas as pd
 import numpy as np
+import csv
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import fbeta_score, confusion_matrix
@@ -46,7 +47,6 @@ def get_cmd_line():
     parser.add_argument('-m', '--model', action='store', dest='model', required=True, help='Model name')
     parser.add_argument('-s', '--subset', action='store', dest='subset', required=True, help='Subset of descriptors')
     parser.add_argument('-t', '--trainset', action='store', dest='trainset', required=True, help='Training set')
-    parser.add_argument('-c', '--columns', action='store', dest='columns', required=True, help='Column names for the DataFrame')
     parser.add_argument('-rs', '--random_state', action='store', dest='random_state', required=True, help='Random seed for StratifiedKFold')
     parser.add_argument('-a', '--activity_label', action='store', dest='activity_label', required=True, help='Activity label', choices=['r_active','f_active'])
     parser.add_argument('-r', '--read_path', action='store', dest='read_path', required=True, help='Path for the data')
@@ -60,7 +60,6 @@ def main():
     model_name = args['model']
     subset = eval(args['subset'])
     trainset = eval(args['trainset'])
-    columns = eval(args['columns'])
     random_state = int(args['random_state'])
     activity_label = args['activity_label']
     read_path = args['read_path']
@@ -95,7 +94,7 @@ def main():
     scores.append(str(model).split('(')[0])
     scores.append(random_state)
     scores.extend([i in subset for i in trainset])
-    df = pd.DataFrame([scores], columns=columns+trainset)
-    df.to_csv(f'{write_dir}/{job_id}/score.csv', index=False)
+    with open(f'{write_dir}/{job_id}/score.csv', 'w+') as file:
+        csv.writer(file).writerow(scores)
 
 if __name__=='__main__': main()

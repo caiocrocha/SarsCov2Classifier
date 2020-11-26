@@ -18,27 +18,27 @@ def get_combinations(min_len, list1, *args):
     # Remove duplicates and return list
     return list(dict.fromkeys(combinations))
 
-def write_job(job_id, model_name, subset, trainset, columns, random_state, 
-    activity_label, read_path, write_dir):
+def write_job(EXEC, job_id, model_name, subset, trainset, random_state, 
+    activity_label, cwd, read_path, write_dir):
 
     if not os.path.isdir(f'{write_dir}/{job_id}'):
         os.mkdir(f'{write_dir}/{job_id}')
 
     with open(f'{write_dir}/{job_id}/job.sh', 'w+') as file:
         file.write(f'''#!/bin/bash
-#$ -N {job_id}
+#$ -S /bin/bash
 #$ -cwd
 #$ -j y
-#$ -S /bin/bash
 
-conda activate rdkit
-./run_model.py -j {job_id} -m "{model_name}" \
-    -s "{str(subset)}" -t "{str(trainset)}" -c "{str(columns)}" -rs {random_state} \
+{EXEC} {cwd}/run_model.py -j {job_id} -m "{model_name}" \
+    -s "{str(subset)}" -t "{str(trainset)}" -rs {random_state} \
     -a "{activity_label}" -r {read_path} -w {write_dir}
 ''')
     return
 
 def main():
+    EXEC="/home/caiocedrola/miniconda3/envs/rdkit/bin/python3.7"
+
     # Read activity data
     activity = pd.read_csv('activity_data.csv')
     from rdkit import Chem
@@ -110,6 +110,8 @@ def main():
     descriptor_list = list(descriptors.columns[1:])
     docking_list = ['qvina','rfscore_qvina','plants','rfscore_plants']
     trainset = descriptor_list + docking_list
+
+    cwd = os.getcwd()
     read_path = 'data.csv'
     data.to_csv(read_path, index=False)
 
@@ -135,9 +137,9 @@ def main():
     scoring_metrics = ['accuracy','precision','recall','f1','f2','g_mean','roc_auc']
     test_metrics = ['test_'+ i for i in scoring_metrics]
 
-    columns = [*test_metrics, 'activity_label', 'model', 'random_state']
-
-    seed_list = [27]
+    # Random list generated with np.random.randint()
+    seed_list = np.array([46, 55, 69,  1, 87, 72, 50,  9, 58, 94])
+    
     job_id = 0
     for random_state in seed_list:
         for activity_label in ['r_active','f_active']:
@@ -145,9 +147,10 @@ def main():
                 subset = list(subset)
                 for model in model_list:
                     model_name = str(model).split('(')[0]
-                    write_job(job_id, model_name, subset, trainset, 
-                    columns, random_state, activity_label, read_path, write_dir)
+                    write_job(EXEC, job_id, model_name, subset, trainset, 
+                    random_state, activity_label, cwd, read_path, write_dir)
 
                     job_id+=1
 
 if __name__=='__main__': main()
+
