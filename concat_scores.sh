@@ -5,10 +5,8 @@ echo "job_id,test_accuracy,test_precision,test_recall,test_f1,test_f2,test_geome
 
 DIR="MODELS"
 
-for entry in ${DIR}/* ; do
-    if [[ -f ${entry}/score.csv ]] ; then
-        cat ${entry}/score.csv >> ${DATA}
-    else
-        echo "No file \"score.csv\" in ${entry}"
+for ENTRY in ${DIR}/* ; do
+    if [[ -f ${ENTRY}/score.csv ]] ; then
+        cat ${ENTRY}/score.csv
     fi
-done
+done >> ${DATA}
