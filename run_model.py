@@ -47,12 +47,34 @@ def get_cmd_line():
     parser.add_argument('-m', '--model', action='store', dest='model', required=True, help='Model name')
     parser.add_argument('-s', '--subset', action='store', dest='subset', required=True, help='Subset of descriptors')
     parser.add_argument('-t', '--trainset', action='store', dest='trainset', required=True, help='Training set')
-    parser.add_argument('-rs', '--random_state', action='store', dest='random_state', required=True, help='Random seed for StratifiedKFold')
     parser.add_argument('-a', '--activity_label', action='store', dest='activity_label', required=True, help='Activity label', choices=['r_active','f_active'])
     parser.add_argument('-r', '--read_path', action='store', dest='read_path', required=True, help='Path for the data')
     parser.add_argument('-w', '--write_dir', action='store', dest='write_dir', required=True, help='Path for the directory where the output files will be written')
     arg_dict = vars(parser.parse_args())
     return arg_dict
+
+def get_scores(X, y, model, model_name, subset, trainset, random_state, activity_label, metrics):
+    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=random_state)
+    for train_index, test_index in skf.split(X, y):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        model_fitted = model.fit(X_train, y_train)
+        y_pred = model_fitted.predict(X_test)
+
+        metrics['accuracy'].append(accuracy_score(y_test, y_pred))
+        metrics['precision'].append(precision_score(y_test, y_pred))
+        metrics['recall'].append(recall_score(y_test, y_pred))
+        metrics['f1'].append(f1_score(y_test, y_pred))
+        metrics['f2'].append(fbeta_score(y_test, y_pred, beta=2))
+        metrics['geometric_mean'].append(geometric_mean_score(y_test, y_pred))
+        metrics['roc_auc'].append(roc_auc_score(y_test, y_pred))
+
+    scores = [np.mean(value) for value in metrics.values()]
+    scores.append(activity_label)
+    scores.append(model_name)
+    scores.append(random_state)
+    scores.extend([i in subset for i in trainset])
+    return scores
 
 def main():
     args = get_cmd_line()
@@ -60,7 +82,6 @@ def main():
     model_name = args['model']
     subset = eval(args['subset'])
     trainset = eval(args['trainset'])
-    random_state = int(args['random_state'])
     activity_label = args['activity_label']
     read_path = args['read_path']
     write_dir = args['write_dir']
@@ -72,29 +93,16 @@ def main():
     X = data[subset]
 
     pipe = make_pipeline(SMOTE(random_state=42), StandardScaler(), model)
-    scoring_metrics = ['accuracy','precision','recall','f1','f2','g_mean','roc_auc']
-    metrics = {key: [] for key in scoring_metrics}
-    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=random_state)
-    for train_index, test_index in skf.split(X, y):
-        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-        model_fitted = pipe.fit(X_train, y_train)
-        y_pred = model_fitted.predict(X_test)
+    scoring_metrics = ['accuracy','precision','recall','f1','f2','geometric_mean','roc_auc']
 
-        metrics['accuracy'].append(accuracy_score(y_test, y_pred))
-        metrics['precision'].append(precision_score(y_test, y_pred))
-        metrics['recall'].append(recall_score(y_test, y_pred))
-        metrics['f1'].append(f1_score(y_test, y_pred))
-        metrics['f2'].append(fbeta_score(y_test, y_pred, beta=2))
-        metrics['g_mean'].append(geometric_mean_score(y_test, y_pred))
-        metrics['roc_auc'].append(roc_auc_score(y_test, y_pred))
+    # Random list generated with np.random.randint()
+    seed_list = np.array([46, 55, 69,  1, 87, 72, 50,  9, 58, 94])
 
-    scores = [np.mean(value) for value in metrics.values()]
-    scores.append(activity_label)
-    scores.append(str(model).split('(')[0])
-    scores.append(random_state)
-    scores.extend([i in subset for i in trainset])
     with open(f'{write_dir}/{job_id}/score.csv', 'w+') as file:
-        csv.writer(file).writerow(scores)
+        metrics = {key: [] for key in scoring_metrics}
+        wr = csv.writer(file)
+        for random_state in seed_list:
+            scores = get_scores(X, y, pipe, model_name, subset, trainset, random_state, activity_label, metrics) 
+            wr.writerow(scores)
 
 if __name__=='__main__': main()

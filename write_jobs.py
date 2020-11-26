@@ -18,8 +18,8 @@ def get_combinations(min_len, list1, *args):
     # Remove duplicates and return list
     return list(dict.fromkeys(combinations))
 
-def write_job(EXEC, job_id, model_name, subset, trainset, random_state, 
-    activity_label, cwd, read_path, write_dir):
+def write_job(EXEC, job_id, model_name, subset, trainset, activity_label, 
+        cwd, read_path, write_dir):
 
     if not os.path.isdir(f'{write_dir}/{job_id}'):
         os.mkdir(f'{write_dir}/{job_id}')
@@ -28,11 +28,12 @@ def write_job(EXEC, job_id, model_name, subset, trainset, random_state,
         file.write(f'''#!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
+#$ -o {write_dir}/{job_id}/out.log
 #$ -j y
 
-{EXEC} {cwd}/run_model.py -j {job_id} -m "{model_name}" \
-    -s "{str(subset)}" -t "{str(trainset)}" -rs {random_state} \
-    -a "{activity_label}" -r {read_path} -w {write_dir}
+{EXEC} run_model.py -j {job_id} -m "{model_name}" \
+    -s "{str(subset)}" -t "{str(trainset)}" -a "{activity_label}" \
+    -r {read_path} -w {write_dir}
 ''')
     return
 
@@ -137,20 +138,16 @@ def main():
     scoring_metrics = ['accuracy','precision','recall','f1','f2','g_mean','roc_auc']
     test_metrics = ['test_'+ i for i in scoring_metrics]
 
-    # Random list generated with np.random.randint()
-    seed_list = np.array([46, 55, 69,  1, 87, 72, 50,  9, 58, 94])
-    
     job_id = 0
-    for random_state in seed_list:
-        for activity_label in ['r_active','f_active']:
-            for subset in combinations:
-                subset = list(subset)
-                for model in model_list:
-                    model_name = str(model).split('(')[0]
-                    write_job(EXEC, job_id, model_name, subset, trainset, 
-                    random_state, activity_label, cwd, read_path, write_dir)
+    for activity_label in ['r_active','f_active']:
+        for subset in combinations:
+            subset = list(subset)
+            for model in model_list:
+                model_name = str(model).split('(')[0]
+                write_job(EXEC, job_id, model_name, subset, trainset, 
+                    activity_label, cwd, read_path, write_dir)
 
-                    job_id+=1
+                job_id+=1
 
 if __name__=='__main__': main()
 
