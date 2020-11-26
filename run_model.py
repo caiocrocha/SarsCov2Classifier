@@ -20,8 +20,8 @@ def get_model_by_name(model_name):
         from sklearn.linear_model import LogisticRegression
         return LogisticRegression(solver='liblinear', random_state=13)
     elif model_name == 'LinearSVC':
-        from sklearn.svm import SVC, LinearSVC
-        return CalibratedClassifierCV(LinearSVC(dual=False, random_state=13))
+        from sklearn.svm import LinearSVC
+        return LinearSVC(dual=False, random_state=13)
     elif model_name == 'RandomForestClassifier':
         from sklearn.ensemble import RandomForestClassifier
         return RandomForestClassifier(n_estimators=10, random_state=13)
