@@ -104,6 +104,6 @@ def main():
         for random_state in seed_list:
             scores = get_scores(X, y, pipe, model_name, subset, trainset, 
                         random_state, activity_label, metrics) 
-            wr.writerow(scores)
+            wr.writerow([job_id, *scores])
 
 if __name__=='__main__': main()
