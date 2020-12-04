@@ -30,7 +30,8 @@ def get_model_by_name(model_name):
         return KNeighborsClassifier(n_neighbors=5)
     elif model_name == 'XGBClassifier':
         from xgboost import XGBClassifier
-        return XGBClassifier(objective='reg:logistic', n_estimators=40, max_depth=3, eta=0.2, random_state=13)
+        return XGBClassifier(objective='reg:logistic', n_estimators=40, 
+            max_depth=3, eta=0.2, random_state=13)
     elif model_name == 'DecisionTreeClassifier':
         from sklearn.tree import DecisionTreeClassifier
         return DecisionTreeClassifier(max_depth=6, random_state=13)
@@ -38,18 +39,29 @@ def get_model_by_name(model_name):
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
         return LinearDiscriminantAnalysis(solver='svd')
     else:
-        raise ValueError(f'IllegalArgumentException: {model_name}')
+        raise ValueError(f'{model_name} is not a valid module')
 
 def get_cmd_line():
     import argparse
     parser = argparse.ArgumentParser(description='Run Model')
-    parser.add_argument('-j', '--job', action='store', dest='job', required=True, help='Job ID')
-    parser.add_argument('-m', '--model', action='store', dest='model', required=True, help='Model name')
-    parser.add_argument('-s', '--subset', action='store', dest='subset', required=True, help='Subset of descriptors')
-    parser.add_argument('-t', '--trainset', action='store', dest='trainset', required=True, help='Training set')
-    parser.add_argument('-a', '--activity_label', action='store', dest='activity_label', required=True, help='Activity label', choices=['r_active','f_active'])
-    parser.add_argument('-r', '--data_file', action='store', dest='data_file', required=True, help='Path for the data')
-    parser.add_argument('-w', '--write_dir', action='store', dest='write_dir', required=True, help='Path for the directory where the output files will be written')
+    parser.add_argument('-j', '--job', action='store', dest='job', 
+        required=True, help='Job ID')
+    parser.add_argument('-m', '--model', action='store', dest='model', 
+        required=True, help='Model name')
+    parser.add_argument('-s', '--subset', action='store', dest='subset', 
+        required=True, help='Subset of descriptors')
+    parser.add_argument('-t', '--trainset', action='store', dest='trainset', 
+        required=True, help='Training set')
+    parser.add_argument('-a', '--activity_label', action='store', dest='activity_label', 
+        required=True, help='Activity label', choices=['r_active','f_active'])
+    parser.add_argument('-r', '--data_file', action='store', dest='data_file', 
+        required=True, help='Path for the data')
+    parser.add_argument('-w', '--write_dir', action='store', dest='write_dir', 
+        required=True, help='Path for the directory where the output files will be written')
+    parser.add_argument('-k', '--kfold', action='store', dest='kfold', 
+        required=False, choices=['y','yes','n','no'], type=str.lower, 
+        default='y', help='Run model with KFold\tDefault="y/yes"')
+    
     arg_dict = vars(parser.parse_args())
     return arg_dict
 
@@ -66,44 +78,52 @@ def get_scores_list(X_train, X_test, y_train, y_test, pipe):
     scores_list.append(roc_auc_score(y_test, y_pred))        # test_roc_auc
     return scores_list
 
-def get_scores_list_KFold(X, y, pipe, random_state_KFold):
+def get_scores_list_KFold(X, y, pipe, random_state):
     scores_list_KFold = []
-    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=random_state_KFold)
+    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=random_state)
     for train_index, test_index in skf.split(X, y):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index] 
         scores_list_KFold.append(get_scores_list(X_train, X_test, y_train, y_test, pipe))
     return scores_list_KFold
 
-def get_scores_list_pipeline(X, y, scaler, model, random_state_smote):
-    # Dictionary of scoring metrics and corresponding scores for each KFold iteration
+def get_scores_list_pipeline(X, y, scaler, model, random_state_smote, run_kfold):
     pipe = make_pipeline(SMOTE(random_state=random_state_smote), scaler, model)
-    # Random list generated with np.random.randint()
-    seed_list_KFold = np.array([46, 55, 69,  1, 87, 72, 50,  9, 58, 94])
     scores_list_pipeline = []
-    for random_state_KFold in seed_list_KFold:
-        scores_list_pipeline.extend(get_scores_list_KFold(X, y, pipe, random_state_KFold))
+    # Random list generated with np.random.randint()
+    seed_list_pipeline = np.array([46, 55, 69,  1, 87, 72, 50,  9, 58, 94])
+
+    if run_kfold:
+        for random_state in seed_list_pipeline:
+            scores_list_pipeline.extend(get_scores_list_KFold(X, y, pipe, random_state))
+    else:
+        for random_state in seed_list_pipeline:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, 
+                random_state=random_state)
+            scores_list_pipeline.append(get_scores_list(X_train, X_test, y_train, y_test, pipe))
+     
     return scores_list_pipeline
 
-def get_mean_scores(X, y, scaler, model):
+def get_mean_scores(X, y, scaler, model, run_kfold):
     # Random list generated with np.random.randint()
     seed_list_smote = np.array([40, 15, 72, 22, 43, 82, 75,  7, 34, 49])
     scores_list = []
     for random_state_smote in seed_list_smote:
-        scores_list.extend(get_scores_list_pipeline(X, y, scaler, model, random_state_smote))
+        scores_list.extend(get_scores_list_pipeline(X, y, scaler, model, 
+            random_state_smote, run_kfold))
 
     df = pd.DataFrame(scores_list)
     mean_scores = list(df.mean())
     return mean_scores
 
-def get_scores(X, y, model_name, subset, trainset, scaler, activity_label):
+def get_scores(X, y, model_name, subset, trainset, scaler, activity_label, run_kfold):
     try:
         model = get_model_by_name(model_name)
     except ValueError as e:
         print(str(e))
         quit()
     
-    scores = get_mean_scores(X, y, scaler, model)
+    scores = get_mean_scores(X, y, scaler, model, run_kfold)
     scores.append(activity_label)
     scores.append(model_name)
 
@@ -124,16 +144,22 @@ def main():
     activity_label = args['activity_label']
     data_file = args['data_file']
     write_dir = args['write_dir']
+    kfold = args['kfold']
+
+    if 'y' in kfold:
+        run_kfold = True
+    else:
+        run_kfold = False
     
     # Drop NaN activity and descriptor values
     data = pd.read_csv(f'{data_file}').dropna(subset=[activity_label])
     y = data[activity_label]
     X = data[subset]
     scaler = StandardScaler()
-    scores = get_scores(X, y, model_name, subset, trainset, scaler, activity_label)
+    scores = get_scores(X, y, model_name, subset, trainset, scaler, activity_label, run_kfold)
 
     with open(f'{write_dir}/{job_id}/score.csv', 'w+') as file:
         wr = csv.writer(file)
-        wr.writerow([job_id, *scores])
+        wr.writerow(scores)
 
 if __name__=='__main__': main()
