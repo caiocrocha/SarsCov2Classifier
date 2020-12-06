@@ -5,15 +5,11 @@
 import pandas as pd
 import numpy as np
 import csv
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
-from sklearn.metrics import roc_curve, auc
-from sklearn.metrics import fbeta_score, confusion_matrix
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import make_pipeline
-from imblearn.metrics import geometric_mean_score
+from imblearn.over_sampling import SMOTE
 
 def get_model_by_name(model_name):
     if model_name == 'LogisticRegression':
@@ -41,6 +37,12 @@ def get_model_by_name(model_name):
     else:
         raise ValueError(f'{model_name} is not a valid module')
 
+def kfold_or_not(option):
+    if option == 'true':
+        return True
+    else:
+        return False
+
 def get_cmd_line():
     import argparse
     parser = argparse.ArgumentParser(description='Run Model')
@@ -52,20 +54,23 @@ def get_cmd_line():
         required=True, help='Subset of descriptors')
     parser.add_argument('-t', '--trainset', action='store', dest='trainset', 
         required=True, help='Training set')
-    parser.add_argument('-a', '--activity_label', action='store', dest='activity_label', 
-        required=True, help='Activity label', choices=['r_active','f_active'])
+    parser.add_argument('-l', '--activity_label', action='store', dest='activity_label', 
+        required=True, help='Activity label', choices=['r_activity','f_activity'])
     parser.add_argument('-r', '--data_file', action='store', dest='data_file', 
-        required=True, help='Path for the data')
+        required=True, help='Path to the data')
     parser.add_argument('-w', '--write_dir', action='store', dest='write_dir', 
-        required=True, help='Path for the directory where the output files will be written')
+        required=True, help='Path to the directory where the output files will be written')
     parser.add_argument('-k', '--kfold', action='store', dest='kfold', 
-        required=False, choices=['y','yes','n','no'], type=str.lower, 
-        default='y', help='Run model with KFold\tDefault="y/yes"')
-    
+        required=False, choices=['true','false'], type=str.lower, 
+        default='true', help='Run model with Stratified KFold\tDefault="true"')
     arg_dict = vars(parser.parse_args())
     return arg_dict
 
 def get_scores_list(X_train, X_test, y_train, y_test, pipe):
+    from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+    from sklearn.metrics import fbeta_score, roc_auc_score
+    from imblearn.metrics import geometric_mean_score
+    
     scores_list = []
     model_fitted = pipe.fit(X_train, y_train)
     y_pred = model_fitted.predict(X_test)
@@ -87,13 +92,13 @@ def get_scores_list_KFold(X, y, pipe, random_state):
         scores_list_KFold.append(get_scores_list(X_train, X_test, y_train, y_test, pipe))
     return scores_list_KFold
 
-def get_scores_list_pipeline(X, y, scaler, model, random_state_smote, run_kfold):
+def get_scores_list_pipeline(X, y, scaler, model, random_state_smote, kfold_true):
     pipe = make_pipeline(SMOTE(random_state=random_state_smote), scaler, model)
     scores_list_pipeline = []
     # Random list generated with np.random.randint()
     seed_list_pipeline = np.array([46, 55, 69,  1, 87, 72, 50,  9, 58, 94])
 
-    if run_kfold:
+    if kfold_true:
         for random_state in seed_list_pipeline:
             scores_list_pipeline.extend(get_scores_list_KFold(X, y, pipe, random_state))
     else:
@@ -104,26 +109,26 @@ def get_scores_list_pipeline(X, y, scaler, model, random_state_smote, run_kfold)
      
     return scores_list_pipeline
 
-def get_mean_scores(X, y, scaler, model, run_kfold):
+def get_mean_scores(X, y, scaler, model, kfold_true):
     # Random list generated with np.random.randint()
     seed_list_smote = np.array([40, 15, 72, 22, 43, 82, 75,  7, 34, 49])
     scores_list = []
     for random_state_smote in seed_list_smote:
         scores_list.extend(get_scores_list_pipeline(X, y, scaler, model, 
-            random_state_smote, run_kfold))
+            random_state_smote, kfold_true))
 
     df = pd.DataFrame(scores_list)
     mean_scores = list(df.mean())
     return mean_scores
 
-def get_scores(X, y, model_name, subset, trainset, scaler, activity_label, run_kfold):
+def get_scores(X, y, model_name, subset, trainset, scaler, activity_label, kfold_true):
     try:
         model = get_model_by_name(model_name)
-    except ValueError as e:
+    except Exception as e:
         print(str(e))
         quit()
     
-    scores = get_mean_scores(X, y, scaler, model, run_kfold)
+    scores = get_mean_scores(X, y, scaler, model, kfold_true)
     scores.append(activity_label)
     scores.append(model_name)
 
@@ -144,19 +149,14 @@ def main():
     activity_label = args['activity_label']
     data_file = args['data_file']
     write_dir = args['write_dir']
-    kfold = args['kfold']
-
-    if 'y' in kfold:
-        run_kfold = True
-    else:
-        run_kfold = False
     
-    # Drop NaN activity and descriptor values
     data = pd.read_csv(f'{data_file}').dropna(subset=[activity_label])
     y = data[activity_label]
     X = data[subset]
     scaler = StandardScaler()
-    scores = get_scores(X, y, model_name, subset, trainset, scaler, activity_label, run_kfold)
+
+    kfold_true = kfold_or_not(args['kfold'])
+    scores = get_scores(X, y, model_name, subset, trainset, scaler, activity_label, kfold_true)
 
     with open(f'{write_dir}/{job_id}/score.csv', 'w+') as file:
         wr = csv.writer(file)
