@@ -31,8 +31,8 @@ def write_job(job_id, model_name, subset, trainset, activity_label, cwd, args):
 -s "{str(subset)}" -t "{str(trainset)}" -l "{activity_label}" \
 -r {data_file} -w {write_dir}'''
 
-    # If run_KFold == False
-    if 'n' in args.KFold:
+    # If kfold_true is False
+    if 'false' in args.KFold:
         cmd += '-k false'
 
     if not os.path.isdir(f'{write_dir}/{job_id}'):
@@ -73,8 +73,8 @@ def get_cmd_line():
     parser.add_argument('-w', '--write_dir', action='store', dest='write_dir', 
         required=True, help='Path to the directory where the output files will be written')
     parser.add_argument('--KFold', action='store', dest='KFold', 
-        required=False, choices=['y','yes','n','no'], type=str.lower, 
-        default='y', help='Default="y/yes"')
+        required=False, choices=['true','false'], type=str.lower, 
+        default='true', help='Default="true"')
     parser.add_argument('EXEC', action='store', help='(Required) Python executable')
     return parser.parse_args()
 
