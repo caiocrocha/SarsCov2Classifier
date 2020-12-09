@@ -33,7 +33,7 @@ def write_job(job_id, model_name, subset, trainset, activity_label, cwd, args):
 
     # If kfold_true is False
     if 'false' in args.KFold:
-        cmd += '-k false'
+        cmd += ' -k false'
 
     if not os.path.isdir(f'{write_dir}/{job_id}'):
         os.mkdir(f'{write_dir}/{job_id}')
