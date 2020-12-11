@@ -70,20 +70,19 @@ def get_scores_list(y_true, y_pred):
                     roc_auc_score(y_true, y_pred)         # test_roc_auc
                     ])
 
-def get_scores_list_pipeline(X, y, pipe):
-    from sklearn.model_selection import train_test_split
+def get_scores_list_KFold(X, y, pipe):
+    from sklearn.model_selection import RepeatedStratifiedKFold
 
-    scores_list_pipeline = []
-    # Random list generated with np.random.randint()
-    seed_list = np.array([46, 55, 69,  1, 87, 72, 50,  9, 58, 94])
-    for random_state in seed_list:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.20, random_state=random_state)
+    scores_list_KFold = []
+    skf = RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=5)
+    for train_index, test_index in skf.split(X, y):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index] 
         model_fitted = pipe.fit(X_train, y_train)
         y_pred = model_fitted.predict(X_test)
-        scores_list_pipeline.append(get_scores_list(y_test, y_pred))
-     
-    return scores_list_pipeline
+        scores_list_KFold.append(get_scores_list(y_test, y_pred))
+    
+    return scores_list_KFold
 
 def get_mean_scores(X, y, scaler, model):
     from imblearn.pipeline import make_pipeline
@@ -94,7 +93,7 @@ def get_mean_scores(X, y, scaler, model):
     seed_list = np.array([40, 15, 72, 22, 43, 82, 75,  7, 34, 49])
     for random_state in seed_list:
         pipe = make_pipeline(SMOTE(random_state=random_state), scaler, model)
-        scores_list_pipeline.extend(get_scores_list_pipeline(X, y, pipe))
+        scores_list_pipeline.extend(get_scores_list_KFold(X, y, pipe))
 
     all_scores = pd.DataFrame(scores_list_pipeline)
     mean_scores = list(all_scores.mean())
