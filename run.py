@@ -46,7 +46,7 @@ def get_cmd_line():
     parser.add_argument('-l', '--activity_label', action='store', dest='activity_label', 
         required=True, help='Activity label', choices=['r_activity','f_activity'])
     parser.add_argument('-r', '--data_file', action='store', dest='data_file', 
-        required=True, help='Path to the data')
+        required=True, help='Path to the input data for the model')
     parser.add_argument('-w', '--write_dir', action='store', dest='write_dir', 
         required=True, help='Path to the directory where the output files will be written')
     arg_dict = vars(parser.parse_args())

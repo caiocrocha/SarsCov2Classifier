@@ -24,16 +24,19 @@ def get_combinations(descriptor_list):
     # Remove duplicates and return list
     return list(dict.fromkeys(combinations))
 
-def write_job(job_id, model_name, subset, trainset, activity_label, cwd, args):
-    data_file = args.data_file
+def write_job(job_id, model_name, subset, trainset, activity_label, 
+        cwd, data_file, args):
     write_dir = args.write_dir
-    cmd = f'''{args.EXEC} run.py -j {job_id} -m "{model_name}" \
--s "{str(subset)}" -t "{str(trainset)}" -l "{activity_label}" \
--r {data_file} -w {write_dir}'''
 
     # If kfold_true is False
-    if 'false' in args.KFold:
-        cmd += ' -k false'
+    if 'true' in args.KFold:
+        script = 'run_KFold.py'
+    else:
+        script = 'run.py'
+    
+    cmd = f'''{args.EXEC} {script} -j {job_id} -m "{model_name}" \
+-s "{str(subset)}" -t "{str(trainset)}" -l "{activity_label}" \
+-r {data_file} -w {write_dir}'''
 
     if not os.path.isdir(f'{write_dir}/{job_id}'):
         os.mkdir(f'{write_dir}/{job_id}')
@@ -47,8 +50,7 @@ def write_job(job_id, model_name, subset, trainset, activity_label, cwd, args):
 {cmd}''')
     return
 
-def write_all(combinations, model_list, trainset, cwd, args):
-    data_file = args.data_file
+def write_all(combinations, model_list, trainset, cwd, data_file, args):
     write_dir = args.write_dir
     if not os.path.isfile(data_file):
         raise FileNotFoundError(f'{data_file} does not exist')
@@ -60,16 +62,14 @@ def write_all(combinations, model_list, trainset, cwd, args):
         for subset in combinations:
             subset = list(subset)
             for model_name in model_list:
-                write_job(job_id, model_name, subset, trainset, 
-                    activity_label, cwd, args)
+                write_job(job_id, model_name, subset, trainset, activity_label, 
+                        cwd, data_file, args)
                 job_id += 1
     return
 
 def get_cmd_line():
     import argparse
     parser = argparse.ArgumentParser(description='Write SGE job files')
-    parser.add_argument('-r', '--data_file', action='store', dest='data_file', 
-        required=True, help='Path to the data')
     parser.add_argument('-w', '--write_dir', action='store', dest='write_dir', 
         required=True, help='Path to the directory where the output files will be written')
     parser.add_argument('--KFold', action='store', dest='KFold', 
@@ -85,6 +85,7 @@ def main():
 
     # Read descriptors
     descriptors = pd.read_csv('descriptors.csv')
+    data_file = 'data.csv'
 
     # Descriptors
     descriptor_list = list(descriptors.columns[1:])
@@ -96,7 +97,7 @@ def main():
     combinations = get_combinations(descriptor_list)
 
     try:
-        write_all(combinations, model_list, trainset, cwd, args)
+        write_all(combinations, model_list, trainset, cwd, data_file, args)
     except Exception as e:
         print(str(e))
 
