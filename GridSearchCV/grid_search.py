@@ -125,6 +125,6 @@ def main():
     results = grid_dataframe(grid, model_name)
 
     directory = args['directory']
-    results.to_csv(f'{directory}/grid.csv', index=False)
+    results.to_csv(f'{directory}/{model_name}/grid_search.csv', index=False)
 
 if __name__ == '__main__': main()
