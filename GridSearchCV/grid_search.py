@@ -33,24 +33,21 @@ def feature_transfomer(X):
     from sklearn.preprocessing import StandardScaler
     from sklearn.preprocessing import OneHotEncoder
         
-    continuous = ['float16', 'float32', 'float64']
-    discrete = ['int16', 'int32', 'int64']
-
     return ColumnTransformer(transformers=[
-        ('continuous', StandardScaler(), X.select_dtypes(include=continuous).columns.tolist()), 
-        ('discrete', OneHotEncoder(handle_unknown='ignore'), X.select_dtypes(include=discrete).columns.tolist())
+        ('continuous', StandardScaler(), X.select_dtypes(include=float).columns.tolist()), 
+        ('discrete', OneHotEncoder(handle_unknown='ignore'), X.select_dtypes(include=int).columns.tolist())
     ])
 
 def mean_score(y_true, y_pred):
     from sklearn.metrics import roc_auc_score
-    from sklearn.metrics import fbeta_score
+    from sklearn.metrics import f1_score
     from imblearn.metrics import geometric_mean_score
 
     auc = roc_auc_score(y_true, y_pred)
-    f2 = fbeta_score(y_true, y_pred, beta=2)
+    f1 = f1_score(y_true, y_pred)
     geometric_mean = geometric_mean_score(y_true, y_pred)
 
-    return (auc + f2 + geometric_mean)/3
+    return (auc + f1 + geometric_mean)/3
 
 def grid_search(X, y, transformer, model, params):
     from imblearn.pipeline import Pipeline
@@ -58,12 +55,14 @@ def grid_search(X, y, transformer, model, params):
     from sklearn.model_selection import RepeatedStratifiedKFold
     from sklearn.model_selection import GridSearchCV
     from sklearn.metrics import make_scorer
+    from sklearn.metrics import roc_auc_score
     
     mean = make_scorer(mean_score, greater_is_better=True)
 
     pipe = Pipeline(steps=[('smote', SMOTE(random_state=42)), ('transformer', transformer), ('clf', model)])
-    grid = GridSearchCV(estimator=pipe, param_grid=params, cv=RepeatedStratifiedKFold(n_splits=10), 
-                        scoring=mean, n_jobs=-1)
+    grid = GridSearchCV(estimator=pipe, param_grid=params, cv=RepeatedStratifiedKFold(
+        n_splits=5, n_repeats=10, random_state=5), scoring=mean, n_jobs=-1)
+    
     grid.fit(X, y)
     return grid
 
@@ -113,7 +112,7 @@ def main():
     with open(args['features_file'], 'r') as file:
         features = file.read().splitlines()
     
-    data = pd.read_csv(args['data_file'])
+    data = pd.read_csv(args['data_file'], compression='gzip')
     y = data['activity']
     X = data[features]
 
