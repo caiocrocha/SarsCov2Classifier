@@ -1,0 +1,6 @@
+<map id="run.get_scores" name="run.get_scores">
+<area shape="rect" id="node2" href="$namespacerun.html#a371ad4a894362d560fa18389eef44bd0" title="run.get_model_by_name" alt="" coords="161,5,325,32"/>
+<area shape="rect" id="node3" href="$namespacerun.html#abc7550df19173f640994aece3b814648" title="run.get_mean_scores" alt="" coords="170,56,317,83"/>
+<area shape="rect" id="node4" href="$namespacerun.html#ad10d244bfc236402abe9749e95bd1ee7" title="run.get_scores_list\l_pipeline" alt="" coords="373,49,505,90"/>
+<area shape="rect" id="node5" href="$namespacerun.html#ad53cd4914ac6dd3d2591f6cf2c596c9a" title="run.get_scores_list" alt="" coords="553,56,685,83"/>
+</map>

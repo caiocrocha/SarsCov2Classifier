@@ -1,0 +1,6 @@
+<map id="run_KFold.get_scores" name="run_KFold.get_scores">
+<area shape="rect" id="node2" href="$namespacerun___k_fold.html#a83f85173390db091944c03347f80e043" title="run_KFold.get_model\l_by_name" alt="" coords="203,5,348,47"/>
+<area shape="rect" id="node3" href="$namespacerun___k_fold.html#a99cc4f6c7fae40555e6bcd896660d548" title="run_KFold.get_mean\l_scores" alt="" coords="204,71,347,112"/>
+<area shape="rect" id="node4" href="$namespacerun___k_fold.html#a7afcf86d062ce7d8acfde4faec74b950" title="run_KFold.get_scores\l_list_KFold" alt="" coords="396,71,545,112"/>
+<area shape="rect" id="node5" href="$namespacerun___k_fold.html#a4e58f6dca9a64e000de3493a17b81b72" title="run_KFold.get_scores_list" alt="" coords="593,78,767,105"/>
+</map>
